@@ -46,9 +46,9 @@ pub mod vesting {
         Ok(())
     }
 
-    // pub fn claim(ctx: Context<Initialize>) -> Result<()> {
-    //     Ok(())
-    // } 
+    pub fn claim(ctx: Context<ClaimTokens>) -> Result<()> {
+        Ok(())
+    } 
 }
 
 
@@ -68,7 +68,7 @@ pub struct AddBeneficiary<'info> {
         init,
         payer = owner,
         seeds = [
-            VAULT_SEED.as_ref(),
+            VAULT_SEED,
             beneficiary.key().as_ref()
         ],
         bump,
@@ -92,6 +92,39 @@ pub struct AddBeneficiary<'info> {
     pub rent : Sysvar<'info,Rent>,
      ///CHECK
     pub token_program :  AccountInfo<'info>
+}
+#[derive(Accounts)]
+pub struct ClaimTokens<'info>{
+    ///CHECK
+    #[account(mut,signer)]
+    pub beneficiary : AccountInfo<'info>,
+    #[account(mut)]
+    pub beneficiary_ata : Account<'info,TokenAccount>,
+    #[account(
+        mut,
+        seeds = [
+            VAULT_SEED,
+            beneficiary.key().as_ref()
+        ],
+        bump
+    )]
+    ///CHECK
+    pub vault_account : AccountInfo<'info>,
+    #[account(
+        mut,
+        seeds = [
+            VESTING_SEED,
+            beneficiary.key().as_ref()
+        ],
+        bump
+    )]
+    pub vesting_account : Account<'info,VestingAccount>,
+    ///CHECK
+    pub system_program : AccountInfo<'info>,
+    pub rent : Sysvar<'info,Rent>,
+    ///CHECK
+    pub token_program : AccountInfo<'info>
+
 }
 
 #[account]
