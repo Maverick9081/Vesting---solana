@@ -27,3 +27,10 @@ pub struct VestingAccount {
     pub total_vesting_amount: u64,
     pub released_amount: u64,
 }
+
+#[derive(AnchorDeserialize, AnchorSerialize, Clone)]
+pub enum Roles {
+    advisor,
+    partner,
+    mentor
+}
