@@ -11,7 +11,7 @@ const VESTING_SEED: &[u8] = b"vesting";
 pub mod vesting {
     use super::*;
 
-    pub fn add_beneficiary(ctx: Context<AddBeneficiary>,total_amount : u64,cliff_time : i64,start_time : i64,end_time :i64) -> Result<()> {
+    pub fn add_beneficiary(ctx: Context<AddBeneficiary>,total_amount : u64,cliff_time : i64,start_time : i64,end_time :i64,role : Role) -> Result<()> {
         
         ctx.accounts.vesting_account.beneficiary = ctx.accounts.beneficiary.to_account_info().key();
         ctx.accounts.vesting_account.beneficiary_ata = ctx.accounts.beneficiary_ata.to_account_info().key();
@@ -22,7 +22,8 @@ pub mod vesting {
         ctx.accounts.vesting_account.owner = ctx.accounts.owner.to_account_info().key();
         ctx.accounts.vesting_account.mint = ctx.accounts.mint.to_account_info().key();
         ctx.accounts.vesting_account.total_vesting_amount = total_amount;
-        ctx.accounts.vesting_account.released_amount = 1;
+        ctx.accounts.vesting_account.released_amount = 0;
+        ctx.accounts.vesting_account.role = role;
         msg!("0");
         let (vault_authority,_vault_authority_bump) = Pubkey::find_program_address(
             &[VAULT_SEED],
@@ -99,18 +100,19 @@ pub struct VestingAccount {
     pub start_time: i64,
     pub end_time : i64,
     pub cliff_time: i64,
-    // pub duration: i64,
     pub owner: Pubkey,
     pub mint: Pubkey,
     pub total_vesting_amount: u64,
     pub released_amount: u64,
+    pub role : Role
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, Clone)]
-pub enum Roles {
-    Advisor,
-    Partner,
-    Mentor
+// #[feature(arbitrary_enum_discriminant)]
+pub enum Role {
+     Advisor {value : i8} ,
+      Partner {value : i8},
+      Mentor {value : i8}
 }
 
 impl<'info> AddBeneficiary <'info>{
