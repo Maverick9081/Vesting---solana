@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{ self, CloseAccount, Mint, SetAuthority, TokenAccount, Transfer};
 use spl_token::instruction::AuthorityType;
 
-declare_id!("Dw5fH4qu2zegeKKQca876aup8pdUnz84118BW16ASABB");
+declare_id!("78HdWBeScSYH95XZ9igBritvjaLhuGmQfvwmjtaDut1o");
 
 const VESTING_SEED: &[u8] = b"vesting";
      const VAULT_SEED: &[u8] = b"vault";
@@ -11,7 +11,7 @@ const VESTING_SEED: &[u8] = b"vesting";
 pub mod vesting {
     use super::*;
 
-    pub fn add_beneficiary(ctx: Context<AddBeneficiary>,total_amount : u64,cliff_time : i64,start_time : i64,end_time :i64,role : Role) -> Result<()> {
+    pub fn add_beneficiary(ctx: Context<AddBeneficiary>,total_amount : u64,cliff_time : i64,start_time : i64,end_time :i64,tge_percentage : u64) -> Result<()> {
         
         ctx.accounts.vesting_account.beneficiary = ctx.accounts.beneficiary.to_account_info().key();
         ctx.accounts.vesting_account.beneficiary_ata = ctx.accounts.beneficiary_ata.to_account_info().key();
@@ -23,7 +23,8 @@ pub mod vesting {
         ctx.accounts.vesting_account.mint = ctx.accounts.mint.to_account_info().key();
         ctx.accounts.vesting_account.total_vesting_amount = total_amount;
         ctx.accounts.vesting_account.released_amount = 0;
-        ctx.accounts.vesting_account.role = role;
+        ctx.accounts.vesting_account.tge_percentage = tge_percentage;
+        ctx.accounts.vesting_account.tge_claimed = false;
         msg!("0");
         let (vault_authority,_vault_authority_bump) = Pubkey::find_program_address(
             &[VAULT_SEED],
@@ -83,7 +84,7 @@ pub struct AddBeneficiary<'info> {
             beneficiary.key().as_ref()
         ],
         bump,
-        space = 176
+        space = 185
     )]
     pub vesting_account : Account<'info,VestingAccount>,
      ///CHECK
@@ -104,16 +105,10 @@ pub struct VestingAccount {
     pub mint: Pubkey,
     pub total_vesting_amount: u64,
     pub released_amount: u64,
-    pub role : Role
+    pub tge_percentage : u64,
+    pub tge_claimed : bool,
 }
 
-#[derive(AnchorDeserialize, AnchorSerialize, Clone)]
-// #[feature(arbitrary_enum_discriminant)]
-pub enum Role {
-     Advisor {value : i8} ,
-      Partner {value : i8},
-      Mentor {value : i8}
-}
 
 impl<'info> AddBeneficiary <'info>{
 
