@@ -6,7 +6,7 @@ declare_id!("AFLwi1VLdGgtHYmxdg2EeqkYvv2oMWwJE4FpTbQfroL1");
 
 const VESTING_SEED: &[u8] = b"vesting";
 const VAULT_SEED: &[u8] = b"vault";
-const DAY :u64 = 86400;
+const DAY :u64 = 10;
 
 #[program]
 pub mod vesting {
@@ -23,11 +23,9 @@ pub mod vesting {
        
         
         ctx.accounts.vesting_account.beneficiary = ctx.accounts.beneficiary.to_account_info().key();
-        // ctx.accounts.vesting_account.beneficiary_ata = ctx.accounts.beneficiary_ata.to_account_info().key();
         ctx.accounts.vesting_account.start_time = start_time;
         ctx.accounts.vesting_account.end_time = end_time;
         ctx.accounts.vesting_account.cliff_time = cliff_time;
-        // ctx.accounts.vesting_account.duration = end_time - start_time;
         ctx.accounts.vesting_account.owner = ctx.accounts.owner.to_account_info().key();
         ctx.accounts.vesting_account.mint = ctx.accounts.mint.to_account_info().key();
         ctx.accounts.vesting_account.total_vesting_amount = total_amount;
@@ -35,18 +33,16 @@ pub mod vesting {
         ctx.accounts.vesting_account.tge_percentage = tge_percentage;
         ctx.accounts.vesting_account.tge_claimed = false;
         ctx.accounts.vesting_account.days_claimed = 0;
-        msg!("0");
         let (vault_authority,_vault_authority_bump) = Pubkey::find_program_address(
             &[VAULT_SEED],
             ctx.program_id
         );
-        msg!("1");
+  
         token::set_authority(
             ctx.accounts.into_set_authority_context(),
             AuthorityType::AccountOwner,
             Some(vault_authority)
         )?;
-        msg!("2");
          token::transfer(
             ctx.accounts.into_transfer_to_pda_context(),
             total_amount
@@ -63,11 +59,11 @@ pub mod vesting {
 
         if &(ctx.accounts.clock.unix_timestamp as u64) > &ctx.accounts.vesting_account.start_time && &(ctx.accounts.clock.unix_timestamp as u64) < &ctx.accounts.vesting_account.cliff_time {
             if ctx.accounts.vesting_account.tge_claimed == false {
-                let  mut tge_amount = &ctx.accounts.vesting_account.total_vesting_amount*
+                let mut tge_amount = &ctx.accounts.vesting_account.total_vesting_amount*
                                     &ctx.accounts.vesting_account.tge_percentage / 100 ;
                 claim_amount  = tge_amount;
                 ctx.accounts.vesting_account.tge_claimed = true;
-                msg!("1, {}",&claim_amount);
+               
             }
         }
     
@@ -77,17 +73,22 @@ pub mod vesting {
                                     &ctx.accounts.vesting_account.tge_percentage / 100 ;
                 claim_amount  = tge_amount;
                 ctx.accounts.vesting_account.tge_claimed = true;
-                 msg!("2, {}",&claim_amount);
+                
             }
 
             let total_days = (&ctx.accounts.vesting_account.end_time - &ctx.accounts.vesting_account.cliff_time)/DAY ;
-            let daily_amount = &ctx.accounts.vesting_account.total_vesting_amount/total_days;
+            
+            let daily_amount = &ctx.accounts.vesting_account.total_vesting_amount/&total_days;
+          
             let current_day = (&(ctx.accounts.clock.unix_timestamp as u64) - &ctx.accounts.vesting_account.cliff_time)/DAY;
-            let unpaid_days = (current_day as u64) - &ctx.accounts.vesting_account.days_claimed;
+           
+            let unpaid_days = &(current_day as u64) - &ctx.accounts.vesting_account.days_claimed;
+         
 
-            claim_amount += &unpaid_days* daily_amount;
-            ctx.accounts.vesting_account.days_claimed = current_day as u64;
-            msg!("2, {}",&claim_amount);
+            claim_amount += (unpaid_days* daily_amount);
+           
+            ctx.accounts.vesting_account.days_claimed = current_day;
+           
         } else {
             if ctx.accounts.vesting_account.tge_claimed == false {
                 let  tge_amount = &ctx.accounts.vesting_account.total_vesting_amount*
@@ -110,7 +111,6 @@ pub mod vesting {
         );
 
         let authority_seeds = &[&VAULT_SEED[..], &[vault_authority_bump]];
-        msg!("3,{}",claim_amount);
 
         token::transfer(ctx.accounts.into_transfer_to_beneficiary_context().with_signer(&[&authority_seeds[..]]),claim_amount)?;
         
