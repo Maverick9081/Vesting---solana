@@ -14,7 +14,11 @@ pub mod vesting {
 
     pub fn add_beneficiary(ctx: Context<AddBeneficiary>,total_amount : u64,cliff_days : u64,start_days : u64,end_days :u64,tge_percentage : u64) -> Result<()> {
 
-         let start = start_days * DAY;
+        if &total_amount < &(&end_days - &start_days) {
+            return err!(VestingError::RewardError);
+        }
+
+        let start = start_days * DAY;
         let end = end_days* DAY;
         let cliff = cliff_days*DAY;
         let start_time = (ctx.accounts.clock.unix_timestamp as u64)+ start;
@@ -52,6 +56,10 @@ pub mod vesting {
     }
 
     pub fn claim(ctx: Context<ClaimTokens>) -> Result<()> {
+
+        if &(ctx.accounts.clock.unix_timestamp as u64) < &ctx.accounts.vesting_account.start_time {
+            return err!(VestingError::VestingNotStarted);
+        }
 
         ctx.accounts.vesting_account.beneficiary_ata = ctx.accounts.beneficiary_ata.to_account_info().key();
 
@@ -117,8 +125,6 @@ pub mod vesting {
         Ok(())
     } 
 }
-
-
 
 #[derive(Accounts)]
 pub struct AddBeneficiary<'info> {
@@ -211,6 +217,18 @@ pub struct VestingAccount {
     pub tge_percentage : u64,
     pub tge_claimed : bool,
     pub days_claimed : u64
+}
+
+#[error_code]
+pub enum VestingError {
+    // 1
+    #[msg("daily reward rate should be greater than 1 ")]
+    RewardError,
+
+    //2
+    #[msg("Vesting period is not started")]
+    VestingNotStarted,
+
 }
 
 
