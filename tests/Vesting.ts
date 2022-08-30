@@ -4,10 +4,12 @@ import { Vesting } from "../target/types/vesting";
 
 import * as Token from "@solana/spl-token";
 import NodeWallet from '@project-serum/anchor/dist/cjs/nodewallet';
+import { assert } from "chai";
+import { min } from "bn.js";
 
 
 describe("Vesting", () => {
-  // Configure the client to use the local cluster.
+  
   const provider = anchor.AnchorProvider.env();
   const wallet = provider.wallet as Wallet;
   anchor.setProvider(provider);
@@ -24,6 +26,10 @@ describe("Vesting", () => {
   const mintAuthority = owner;
 
   it('Initialize vesting account', async () => {
+    await provider.connection.confirmTransaction(
+      await provider.connection.requestAirdrop(beneficiary.publicKey, 1000000000),
+      "processed"
+    );
     mint = await Token.createMint(
       provider.connection,
       owner,
@@ -118,8 +124,6 @@ describe("Vesting", () => {
     beneficiary.publicKey
   );
 
-
-
     const tx2 = await program.methods.claim().accounts({
     beneficiary : beneficiary.publicKey,
     beneficiaryAta : beneficiaryTokenAccount.address,
@@ -131,12 +135,19 @@ describe("Vesting", () => {
     systemProgram : systemProgram,
     rent : rent
   }).signers([beneficiary]).rpc()
+  console.log("cliam transaction hash",tx2)
 
-  console.log(tx2)
+  // const wallet = new NodeWallet(beneficiary)
 
-  it("Is initialized!", async () => {
-    // Add your test here.
-   
-  });
+  // const connection2 = new anchor.web3.Connection('https://api.devnet.solana.com');
+  // const options = anchor.AnchorProvider.defaultOptions();
+  // const provider2 = new anchor.AnchorProvider(connection2, wallet, options);
+
+  // console.log(await provider2.connection.getTokenAccountBalance(mint));
+
+
+
+ 
+
 });
 });

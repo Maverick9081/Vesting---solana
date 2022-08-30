@@ -6,7 +6,7 @@ declare_id!("AFLwi1VLdGgtHYmxdg2EeqkYvv2oMWwJE4FpTbQfroL1");
 
 const VESTING_SEED: &[u8] = b"vesting";
 const VAULT_SEED: &[u8] = b"vault";
-const DAY :u64 = 10;
+const DAY :u64 = 86400;
 
 #[program]
 pub mod vesting {
@@ -56,6 +56,10 @@ pub mod vesting {
     }
 
     pub fn claim(ctx: Context<ClaimTokens>) -> Result<()> {
+
+        if &ctx.accounts.vesting_account.beneficiary != &ctx.accounts.beneficiary.to_account_info().key(){
+            return err!(VestingError::InvalidBeneficiary);
+        }
 
         if &(ctx.accounts.clock.unix_timestamp as u64) < &ctx.accounts.vesting_account.start_time {
             return err!(VestingError::VestingNotStarted);
@@ -228,6 +232,10 @@ pub enum VestingError {
     //2
     #[msg("Vesting period is not started")]
     VestingNotStarted,
+
+    //3
+    #[msg("Invalid beneficiary account")]
+    InvalidBeneficiary
 
 }
 
