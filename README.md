@@ -2,6 +2,8 @@
 
 This contract Implements Vesting functionality in solana with dynamic tge for every beneficiary followed by Linear vesting.Contract is written using anchor framework.
 
+Deployed Program Address(Devnet) : AFLwi1VLdGgtHYmxdg2EeqkYvv2oMWwJE4FpTbQfroL1
+
 Steps To use 
 
 1.clone this repo.
@@ -28,3 +30,7 @@ anchor build
 ```
 anchor test
 ```
+
+
+For Web 3 scripts check the `test.js` file
+
