@@ -8,17 +8,22 @@ Steps To use
 ```
 git clone https://github.com/Maverick9081/Vesting---solana.git
 ```
+
 2. install dependencies.
 ```
 cd Vesting---solana
 npm i
 ```
+
 3. New to solana? follow this guide  :  https://careful-narcissus-91d.notion.site/Solana-7cceb917bce44716a18b8a36e0a7d9bd
+
 4.Build the Program
 ```
 anchor build
 ```
+
 5. Configue `Anchor.toml` file for default wallets and cluster settings and program address.
+
 6. Run the test
 ```
 anchor test
