@@ -23,13 +23,10 @@ pub mod vesting {
         if &total_amount < &(&end_days - &start_days) {
             return err!(VestingError::RewardError);
         }
-
-        let start = start_days * DAY;
-        let end = end_days * DAY;
-        let cliff = cliff_days * DAY;
-        let start_time = (ctx.accounts.clock.unix_timestamp as u64) + start;
-        let end_time = (ctx.accounts.clock.unix_timestamp as u64) + end;
-        let cliff_time = &start_time + cliff;
+        
+        let start_time = (ctx.accounts.clock.unix_timestamp as u64) + (start_days * DAY);
+        let end_time = (ctx.accounts.clock.unix_timestamp as u64) + (end_days * DAY);
+        let cliff_time = &start_time + (cliff_days * DAY);
 
         ctx.accounts.vesting_account.beneficiary = ctx.accounts.beneficiary.to_account_info().key();
         ctx.accounts.vesting_account.start_time = start_time;
