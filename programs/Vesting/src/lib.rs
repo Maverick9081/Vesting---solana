@@ -24,12 +24,9 @@ pub mod vesting {
             return err!(VestingError::RewardError);
         }
 
-        let start = start_days * DAY;
-        let end = end_days * DAY;
-        let cliff = cliff_days * DAY;
-        let start_time = (ctx.accounts.clock.unix_timestamp as u64) + start;
-        let end_time = (ctx.accounts.clock.unix_timestamp as u64) + end;
-        let cliff_time = &start_time + cliff;
+        let start_time = (ctx.accounts.clock.unix_timestamp as u64) + (start_days * DAY);
+        let end_time = (ctx.accounts.clock.unix_timestamp as u64) + (end_days * DAY);
+        let cliff_time = &start_time + (cliff_days * DAY);
 
         ctx.accounts.vesting_account.beneficiary = ctx.accounts.beneficiary.to_account_info().key();
         ctx.accounts.vesting_account.start_time = start_time;
@@ -65,7 +62,7 @@ pub mod vesting {
             return err!(VestingError::InvalidBeneficiary);
         }
 
-        if &(ctx.accounts.clock.unix_timestamp as u64) < &ctx.accounts.vesting_account.start_time {
+        if (ctx.accounts.clock.unix_timestamp as u64) < ctx.accounts.vesting_account.start_time {
             return err!(VestingError::VestingNotStarted);
         }
 
@@ -76,27 +73,27 @@ pub mod vesting {
         let mut claim_amount: u64 = 0;
 
         if
-            &(ctx.accounts.clock.unix_timestamp as u64) >
-                &ctx.accounts.vesting_account.start_time &&
-            &(ctx.accounts.clock.unix_timestamp as u64) < &ctx.accounts.vesting_account.cliff_time
+            (ctx.accounts.clock.unix_timestamp as u64) >
+                ctx.accounts.vesting_account.start_time &&
+            (ctx.accounts.clock.unix_timestamp as u64) < ctx.accounts.vesting_account.cliff_time
         {
             if ctx.accounts.vesting_account.tge_claimed == false {
-                let mut tge_amount =
-                    (&ctx.accounts.vesting_account.total_vesting_amount *
-                        &ctx.accounts.vesting_account.tge_percentage) /
+                let  tge_amount =
+                    (ctx.accounts.vesting_account.total_vesting_amount *
+                        ctx.accounts.vesting_account.tge_percentage) /
                     100;
                 claim_amount = tge_amount;
                 ctx.accounts.vesting_account.tge_claimed = true;
             }
         } else if
-            &(ctx.accounts.clock.unix_timestamp as u64) >
-                &ctx.accounts.vesting_account.cliff_time &&
-            &(ctx.accounts.clock.unix_timestamp as u64) < &ctx.accounts.vesting_account.end_time
+            (ctx.accounts.clock.unix_timestamp as u64) >
+                ctx.accounts.vesting_account.cliff_time &&
+            (ctx.accounts.clock.unix_timestamp as u64) < ctx.accounts.vesting_account.end_time
         {
             if ctx.accounts.vesting_account.tge_claimed == false {
-                let mut tge_amount =
-                    (&ctx.accounts.vesting_account.total_vesting_amount *
-                        &ctx.accounts.vesting_account.tge_percentage) /
+                let  tge_amount =
+                    (ctx.accounts.vesting_account.total_vesting_amount *
+                        ctx.accounts.vesting_account.tge_percentage) /
                     100;
                 claim_amount = tge_amount;
                 ctx.accounts.vesting_account.tge_claimed = true;
@@ -107,14 +104,14 @@ pub mod vesting {
                     &ctx.accounts.vesting_account.cliff_time) /
                 DAY;
 
-            let daily_amount = &ctx.accounts.vesting_account.total_vesting_amount / &total_days;
+            let daily_amount = ctx.accounts.vesting_account.total_vesting_amount / total_days;
 
             let current_day =
-                (&(ctx.accounts.clock.unix_timestamp as u64) -
-                    &ctx.accounts.vesting_account.cliff_time) /
+                ((ctx.accounts.clock.unix_timestamp as u64) -
+                    ctx.accounts.vesting_account.cliff_time) /
                 DAY;
 
-            let unpaid_days = &(current_day as u64) - &ctx.accounts.vesting_account.days_claimed;
+            let unpaid_days = (current_day as u64) - ctx.accounts.vesting_account.days_claimed;
 
             claim_amount += unpaid_days * daily_amount;
 
@@ -122,22 +119,22 @@ pub mod vesting {
         } else {
             if ctx.accounts.vesting_account.tge_claimed == false {
                 let tge_amount =
-                    (&ctx.accounts.vesting_account.total_vesting_amount *
-                        &ctx.accounts.vesting_account.tge_percentage) /
+                    (ctx.accounts.vesting_account.total_vesting_amount *
+                        ctx.accounts.vesting_account.tge_percentage) /
                     100;
                 claim_amount = tge_amount;
                 ctx.accounts.vesting_account.tge_claimed = true;
-                ctx.accounts.vesting_account.released_amount += &claim_amount;
-                msg!("3, {}", &claim_amount);
+                ctx.accounts.vesting_account.released_amount += claim_amount;
+                msg!("3, {}", claim_amount);
             }
             let left_amount =
-                &ctx.accounts.vesting_account.total_vesting_amount -
-                &ctx.accounts.vesting_account.released_amount;
+                ctx.accounts.vesting_account.total_vesting_amount -
+                ctx.accounts.vesting_account.released_amount;
 
             claim_amount += left_amount;
         }
 
-        ctx.accounts.vesting_account.released_amount += &claim_amount;
+        ctx.accounts.vesting_account.released_amount += claim_amount;
 
         let (_vault_authority, vault_authority_bump) = Pubkey::find_program_address(
             &[VAULT_SEED],
