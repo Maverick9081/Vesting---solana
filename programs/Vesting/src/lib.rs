@@ -1,12 +1,14 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{ self, CloseAccount, Mint, SetAuthority, TokenAccount, Transfer };
 use spl_token::instruction::AuthorityType;
+use solana_program::pubkey;
 
 declare_id!("AFLwi1VLdGgtHYmxdg2EeqkYvv2oMWwJE4FpTbQfroL1");
 
 const VESTING_SEED: &[u8] = b"vesting";
 const VAULT_SEED: &[u8] = b"vault";
 const DAY: u64 = 86400;
+const OWNER: Pubkey = pubkey!("U4NHM8DNT3kCNrRtB9ymgt1mcR6RBaHwUHWLoxM4KTF");
 
 #[program]
 pub mod vesting {
@@ -20,6 +22,10 @@ pub mod vesting {
         end_days: u64,
         tge_percentage: u64
     ) -> Result<()> {
+        if ctx.accounts.owner.to_account_info().key() != OWNER {
+            return err!(VestingError::Unauthorized);
+        }
+
         if total_amount < end_days - start_days {
             return err!(VestingError::RewardError);
         }
@@ -147,7 +153,10 @@ pub mod vesting {
             claim_amount
         )?;
 
-        if ctx.accounts.vesting_account.total_vesting_amount == ctx.accounts.vesting_account.released_amount {
+        if
+            ctx.accounts.vesting_account.total_vesting_amount ==
+            ctx.accounts.vesting_account.released_amount
+        {
             token::close_account(
                 ctx.accounts.into_close_context().with_signer(&[&authority_seeds[..]])
             )?;
@@ -232,7 +241,7 @@ pub struct ClaimTokens<'info> {
     ///CHECK
     pub token_program: AccountInfo<'info>,
     ///CHECK
-    pub associated_token_program : AccountInfo<'info>
+    pub associated_token_program: AccountInfo<'info>,
 }
 
 #[account]
@@ -264,6 +273,10 @@ pub enum VestingError {
     //3
     #[msg("Invalid beneficiary account")]
     InvalidBeneficiary,
+
+    //4
+    #[msg("You are not authorized to perform this action.")]
+    Unauthorized,
 }
 
 impl<'info> AddBeneficiary<'info> {
