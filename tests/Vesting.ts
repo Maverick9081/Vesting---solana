@@ -134,6 +134,7 @@ describe("Vesting", () => {
       .accounts({
         beneficiary: beneficiary.publicKey,
         beneficiaryAta: beneficiaryTokenAccount.address,
+        mint : mint,
         vaultAccount: vaultAccount[0],
         vestingAccount: vestingAccount[0],
         vaultAuthority: vaultAuthority[0],

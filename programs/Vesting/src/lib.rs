@@ -196,8 +196,14 @@ pub struct ClaimTokens<'info> {
     ///CHECK
     #[account(mut,signer)]
     pub beneficiary: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(
+        init_if_needed,
+        payer = beneficiary,
+        associated_token::mint = mint,
+        associated_token::authority = beneficiary
+    )]
     pub beneficiary_ata: Account<'info, TokenAccount>,
+    pub mint: Account<'info, Mint>,
     #[account(
         mut,
         seeds = [
@@ -225,6 +231,8 @@ pub struct ClaimTokens<'info> {
     pub clock: Sysvar<'info, Clock>,
     ///CHECK
     pub token_program: AccountInfo<'info>,
+    ///CHECK
+    pub associated_token_program : AccountInfo<'info>
 }
 
 #[account]
