@@ -1,12 +1,14 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{ self, CloseAccount, Mint, SetAuthority, TokenAccount, Transfer };
 use spl_token::instruction::AuthorityType;
+use solana_program::pubkey;
 
 declare_id!("AFLwi1VLdGgtHYmxdg2EeqkYvv2oMWwJE4FpTbQfroL1");
 
 const VESTING_SEED: &[u8] = b"vesting";
 const VAULT_SEED: &[u8] = b"vault";
 const DAY: u64 = 86400;
+const OWNER: Pubkey = pubkey!("U4NHM8DNT3kCNrRtB9ymgt1mcR6RBaHwUHWLoxM4KTF");
 
 #[program]
 pub mod vesting {
@@ -20,13 +22,17 @@ pub mod vesting {
         end_days: u64,
         tge_percentage: u64
     ) -> Result<()> {
-        if &total_amount < &(&end_days - &start_days) {
+        if ctx.accounts.owner.to_account_info().key() != OWNER {
+            return err!(VestingError::Unauthorized);
+        }
+
+        if total_amount < end_days - start_days {
             return err!(VestingError::RewardError);
         }
 
-        let start_time = (ctx.accounts.clock.unix_timestamp as u64) + (start_days * DAY);
-        let end_time = (ctx.accounts.clock.unix_timestamp as u64) + (end_days * DAY);
-        let cliff_time = &start_time + (cliff_days * DAY);
+        let start_time = (ctx.accounts.clock.unix_timestamp as u64) + start_days * DAY;
+        let end_time = (ctx.accounts.clock.unix_timestamp as u64) + end_days * DAY;
+        let cliff_time = start_time + cliff_days * DAY;
 
         ctx.accounts.vesting_account.beneficiary = ctx.accounts.beneficiary.to_account_info().key();
         ctx.accounts.vesting_account.start_time = start_time;
@@ -73,12 +79,11 @@ pub mod vesting {
         let mut claim_amount: u64 = 0;
 
         if
-            (ctx.accounts.clock.unix_timestamp as u64) >
-                ctx.accounts.vesting_account.start_time &&
+            (ctx.accounts.clock.unix_timestamp as u64) > ctx.accounts.vesting_account.start_time &&
             (ctx.accounts.clock.unix_timestamp as u64) < ctx.accounts.vesting_account.cliff_time
         {
             if ctx.accounts.vesting_account.tge_claimed == false {
-                let  tge_amount =
+                let tge_amount =
                     (ctx.accounts.vesting_account.total_vesting_amount *
                         ctx.accounts.vesting_account.tge_percentage) /
                     100;
@@ -86,12 +91,11 @@ pub mod vesting {
                 ctx.accounts.vesting_account.tge_claimed = true;
             }
         } else if
-            (ctx.accounts.clock.unix_timestamp as u64) >
-                ctx.accounts.vesting_account.cliff_time &&
+            (ctx.accounts.clock.unix_timestamp as u64) > ctx.accounts.vesting_account.cliff_time &&
             (ctx.accounts.clock.unix_timestamp as u64) < ctx.accounts.vesting_account.end_time
         {
             if ctx.accounts.vesting_account.tge_claimed == false {
-                let  tge_amount =
+                let tge_amount =
                     (ctx.accounts.vesting_account.total_vesting_amount *
                         ctx.accounts.vesting_account.tge_percentage) /
                     100;
@@ -125,7 +129,6 @@ pub mod vesting {
                 claim_amount = tge_amount;
                 ctx.accounts.vesting_account.tge_claimed = true;
                 ctx.accounts.vesting_account.released_amount += claim_amount;
-                msg!("3, {}", claim_amount);
             }
             let left_amount =
                 ctx.accounts.vesting_account.total_vesting_amount -
@@ -149,6 +152,15 @@ pub mod vesting {
                 .with_signer(&[&authority_seeds[..]]),
             claim_amount
         )?;
+
+        if
+            ctx.accounts.vesting_account.total_vesting_amount ==
+            ctx.accounts.vesting_account.released_amount
+        {
+            token::close_account(
+                ctx.accounts.into_close_context().with_signer(&[&authority_seeds[..]])
+            )?;
+        }
 
         Ok(())
     }
@@ -193,8 +205,14 @@ pub struct ClaimTokens<'info> {
     ///CHECK
     #[account(mut,signer)]
     pub beneficiary: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(
+        init_if_needed,
+        payer = beneficiary,
+        associated_token::mint = mint,
+        associated_token::authority = beneficiary
+    )]
     pub beneficiary_ata: Account<'info, TokenAccount>,
+    pub mint: Account<'info, Mint>,
     #[account(
         mut,
         seeds = [
@@ -222,6 +240,8 @@ pub struct ClaimTokens<'info> {
     pub clock: Sysvar<'info, Clock>,
     ///CHECK
     pub token_program: AccountInfo<'info>,
+    ///CHECK
+    pub associated_token_program: AccountInfo<'info>,
 }
 
 #[account]
@@ -253,6 +273,10 @@ pub enum VestingError {
     //3
     #[msg("Invalid beneficiary account")]
     InvalidBeneficiary,
+
+    //4
+    #[msg("You are not authorized to perform this action.")]
+    Unauthorized,
 }
 
 impl<'info> AddBeneficiary<'info> {
@@ -281,6 +305,15 @@ impl<'info> ClaimTokens<'info> {
         let cpi_accounts = Transfer {
             from: self.vault_account.to_account_info().clone(),
             to: self.beneficiary_ata.to_account_info().clone(),
+            authority: self.vault_authority.clone(),
+        };
+        CpiContext::new(self.token_program.clone(), cpi_accounts)
+    }
+
+    fn into_close_context(&self) -> CpiContext<'_, '_, '_, 'info, CloseAccount<'info>> {
+        let cpi_accounts = CloseAccount {
+            account: self.vault_account.to_account_info().clone(),
+            destination: self.beneficiary.clone(),
             authority: self.vault_authority.clone(),
         };
         CpiContext::new(self.token_program.clone(), cpi_accounts)
