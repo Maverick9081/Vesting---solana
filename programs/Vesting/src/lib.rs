@@ -38,7 +38,6 @@ pub mod vesting {
         ctx.accounts.vesting_account.start_time = start_time;
         ctx.accounts.vesting_account.end_time = end_time;
         ctx.accounts.vesting_account.cliff_time = cliff_time;
-        ctx.accounts.vesting_account.owner = ctx.accounts.owner.to_account_info().key();
         ctx.accounts.vesting_account.mint = ctx.accounts.mint.to_account_info().key();
         ctx.accounts.vesting_account.total_vesting_amount = total_amount;
         ctx.accounts.vesting_account.released_amount = 0;
@@ -70,6 +69,10 @@ pub mod vesting {
 
         if (ctx.accounts.clock.unix_timestamp as u64) < ctx.accounts.vesting_account.start_time {
             return err!(VestingError::VestingNotStarted);
+        }
+
+        if ctx.accounts.owner.to_account_info().key() != OWNER {
+            return err!(VestingError::InvalidOwner);
         }
 
         ctx.accounts.vesting_account.beneficiary_ata = ctx.accounts.beneficiary_ata
@@ -205,6 +208,8 @@ pub struct ClaimTokens<'info> {
     ///CHECK
     #[account(mut,signer)]
     pub beneficiary: AccountInfo<'info>,
+      ///CHECK
+      pub owner : AccountInfo<'info>,
     #[account(
         init_if_needed,
         payer = beneficiary,
@@ -251,7 +256,6 @@ pub struct VestingAccount {
     pub start_time: u64,
     pub end_time: u64,
     pub cliff_time: u64,
-    pub owner: Pubkey,
     pub mint: Pubkey,
     pub total_vesting_amount: u64,
     pub released_amount: u64,
@@ -277,6 +281,10 @@ pub enum VestingError {
     //4
     #[msg("You are not authorized to perform this action.")]
     Unauthorized,
+
+    //5
+    #[msg("Invalid owner account")]
+    InvalidOwner
 }
 
 impl<'info> AddBeneficiary<'info> {
@@ -313,7 +321,7 @@ impl<'info> ClaimTokens<'info> {
     fn into_close_context(&self) -> CpiContext<'_, '_, '_, 'info, CloseAccount<'info>> {
         let cpi_accounts = CloseAccount {
             account: self.vault_account.to_account_info().clone(),
-            destination: self.beneficiary.clone(),
+            destination: self.owner.to_account_info().clone(),
             authority: self.vault_authority.clone(),
         };
         CpiContext::new(self.token_program.clone(), cpi_accounts)
